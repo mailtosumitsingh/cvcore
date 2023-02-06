@@ -1,7 +1,7 @@
 package com.sumit.cv.cvcore.dro;
 
 
-import java.io.File;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -11,36 +11,35 @@ import org.bytedeco.opencv.opencv_core.Mat;
 import org.bytedeco.opencv.opencv_core.Point;
 import org.bytedeco.opencv.opencv_core.Point2f;
 import org.bytedeco.opencv.opencv_core.Scalar;
+import org.springframework.util.StringUtils;
 
-import com.google.common.collect.Lists;
-import com.sumit.cv.cvcore.dro.dro.simpledro.DynaModelSupport;
-import com.sumit.cv.cvcore.dro.dro.simpledro.IDROReader;
 import com.sumit.cv.cvcore.dro.dro.simpledro.SimpleDigit;
 import com.sumit.cv.cvcore.dro.dro.simpledro.SimpleModel;
 import com.sumit.cv.cvcore.dro.dro.simpledro.SimpleSegment;
 import com.sumit.cv.cvcore.opencv.OpencvUtils;
 
-public class ReadDROOverHTTP  implements IDROReader,DynaModelSupport {
+public class ReadDROOverHTTP  {
 	private static boolean DEBUG = true, TRACE = true;
-	public static String base = "";
-	public SimpleModel dynaModel = null; 
+	private  SimpleModel dynaModel = null; 
+
+	
+	public ReadDROOverHTTP(SimpleModel dynaModel) {
+		this.dynaModel = dynaModel;
+	}
 
 	public SimpleModel getDynaModel() {
 		return dynaModel;
 	}
 
-	public void setDynaModel(SimpleModel dynaModel) {
-		this.dynaModel = dynaModel;
-	}
 
-	public List<Integer> handle(String imageName) throws Exception {
-		List<Integer> lst = Lists.newLinkedList();
+	public List<Integer> handle(String imageName,String imageNameTemplate) throws Exception {
+		List<Integer> lst = new ArrayList<Integer>();
 		if (imageName != null) {
-			lst = read(imageName);
+			Mat img = org.bytedeco.opencv.global.opencv_imgcodecs.imread(imageName, org.bytedeco.opencv.global.opencv_imgcodecs.IMREAD_COLOR);
+			evaluateInternal(getModel(), img, imageNameTemplate);
 		} else {
 			Mat img = getFromCamera();
-			imageName = base + File.separator + "uploaded" + File.separator + "extraimages" + File.separator + "ReadDROOverHTTP.jpg";
-			lst = evaluateInternal(getModel(), img, imageName);
+			lst = evaluateInternal(getModel(), img, imageNameTemplate);
 		}
 		return lst;
 	}
@@ -50,11 +49,7 @@ public class ReadDROOverHTTP  implements IDROReader,DynaModelSupport {
 	}
 
 
-	private  List<Integer> evaluate(SimpleModel model, String imageName) {
-		Mat img = org.bytedeco.opencv.global.opencv_imgcodecs.imread(imageName, org.bytedeco.opencv.global.opencv_imgcodecs.IMREAD_COLOR);
-		return evaluateInternal(model, img, imageName);
-	}
-	private  List<Integer> evaluateInternal(SimpleModel model, Mat img, String imageName) {
+	private  List<Integer> evaluateInternal(SimpleModel model, Mat img,String imageNameTemplate) {
 		List<Integer> ret = new java.util.LinkedList<>();
 		
 		if (Math.abs(model.getDisplayAngle() - 0) > .0001) {
@@ -116,7 +111,7 @@ public class ReadDROOverHTTP  implements IDROReader,DynaModelSupport {
 		}
 
 		Mat view = OpencvUtils.getImageRoiRect(imgDebug, model.getX(), model.getY(), model.getW(), model.getH());
-		OpencvUtils.saveImage(imgDebug, imageName + "_changed.jpg");
+		OpencvUtils.saveImage(imgDebug, StringUtils.replace(imageNameTemplate, "{0}", "changed"));
 		for (int i = 0; i < model.getDigits().size(); i++) {
 			int numApprox = numApprox(val[i]);
 			ret.add(numApprox);
@@ -394,18 +389,6 @@ public class ReadDROOverHTTP  implements IDROReader,DynaModelSupport {
 
 
 
-	@Override
-	public List<Integer> read(String imagePath) {
-		return evaluate(getModel(), imagePath);
-	}
-	@Override
-	public List<Integer> read(Mat img) {
-		return evaluateInternal(getModel(), img,null);
-	}
-	@Override
-	public List<Integer> read(Mat img,String imageName) {
-		return evaluateInternal(getModel(), img, imageName);
-		
-	}
+
 
 }
