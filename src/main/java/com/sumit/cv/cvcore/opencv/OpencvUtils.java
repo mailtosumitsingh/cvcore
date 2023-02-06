@@ -33,6 +33,7 @@ import org.bytedeco.opencv.opencv_videoio.VideoCapture;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.videoio.Videoio;
 import org.bytedeco.opencv.opencv_core.Point;
+import org.bytedeco.opencv.opencv_core.Point2f;
 import org.bytedeco.opencv.opencv_core.Rect;
 
 
@@ -402,5 +403,11 @@ public class OpencvUtils {
 			System.out.println(frameCount + " Frames extracted");
 
 		}
+	}
+	public static boolean colorMatch(double[] a, Scalar testColor, Scalar colorMatchTolerance) {
+		if ((Math.abs(a[0] - testColor.get(0)) < colorMatchTolerance.get(0)) && (Math.abs(a[1] - testColor.get(1)) < colorMatchTolerance.get(1)) && (Math.abs(a[2] - testColor.get(2)) < colorMatchTolerance.get(2)))
+			return true;
+
+		return false;
 	}
 }
