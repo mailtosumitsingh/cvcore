@@ -1,6 +1,5 @@
 package com.sumit.cv.cvcore.opencv;
 
-
 import static org.bytedeco.opencv.global.opencv_core.IPL_DEPTH_8U;
 import static org.bytedeco.opencv.global.opencv_core.cvAbsDiff;
 import static org.bytedeco.opencv.global.opencv_core.cvCopy;
@@ -16,6 +15,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.bytedeco.javacpp.FloatPointer;
 import org.bytedeco.javacpp.indexer.Indexer;
 import org.bytedeco.javacv.CanvasFrame;
 import org.bytedeco.javacv.OpenCVFrameConverter;
@@ -26,16 +26,17 @@ import org.bytedeco.opencv.opencv_core.CvRect;
 import org.bytedeco.opencv.opencv_core.CvScalar;
 import org.bytedeco.opencv.opencv_core.IplImage;
 import org.bytedeco.opencv.opencv_core.Mat;
+import org.bytedeco.opencv.opencv_core.MatVector;
+import org.bytedeco.opencv.opencv_core.Point;
+import org.bytedeco.opencv.opencv_core.Point2f;
+import org.bytedeco.opencv.opencv_core.Rect;
+import org.bytedeco.opencv.opencv_core.RotatedRect;
 import org.bytedeco.opencv.opencv_core.Scalar;
 import org.bytedeco.opencv.opencv_core.Size;
 import org.bytedeco.opencv.opencv_imgproc.CvFont;
 import org.bytedeco.opencv.opencv_videoio.VideoCapture;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.videoio.Videoio;
-import org.bytedeco.opencv.opencv_core.Point;
-import org.bytedeco.opencv.opencv_core.Point2f;
-import org.bytedeco.opencv.opencv_core.Rect;
-
 
 public class OpencvUtils {
 	public static final Map<Integer, Scalar> colorMap = new HashMap<Integer, Scalar>();
@@ -50,7 +51,7 @@ public class OpencvUtils {
 	public static final Scalar magenta = rgb(255, 0, 255);
 	public static final Scalar pink = rgb(0xFF, 0x66, 0xFF);
 	public static final Scalar orange = rgb(0xFF, 0x99, 0x33);
-	
+
 	public static final CvScalar cvwhite = cvrgb(255, 255, 255);
 	public static final CvScalar cvblack = cvrgb(0, 0, 0);
 	public static final CvScalar cvgray = cvrgb(128, 128, 128);
@@ -62,8 +63,7 @@ public class OpencvUtils {
 	public static final CvScalar cvmagenta = cvrgb(255, 0, 255);
 	public static final CvScalar cvpink = cvrgb(0xFF, 0x66, 0xFF);
 	public static final CvScalar cvorange = cvrgb(0xFF, 0x99, 0x33);
-	
-	
+
 	static {
 		colorMap.put(0, white);
 		colorMap.put(1, black);
@@ -77,59 +77,85 @@ public class OpencvUtils {
 		colorMap.put(9, pink);
 		colorMap.put(10, orange);
 	}
-	 static OpenCVFrameConverter.ToIplImage iplConverter = new OpenCVFrameConverter.ToIplImage();
-	 static OpenCVFrameConverter.ToMat  matConverter = new OpenCVFrameConverter.ToMat();
+	static OpenCVFrameConverter.ToIplImage iplConverter = new OpenCVFrameConverter.ToIplImage();
+	static OpenCVFrameConverter.ToMat matConverter = new OpenCVFrameConverter.ToMat();
 
-
-	public static void drawRect(Mat image, Point p1,Point p2 , Scalar color) {
+	public static void drawRect(Mat image, Point p1, Point p2, Scalar color) {
 		opencv_imgproc.rectangle(image, p1, p2, color);
 	}
 
 	public static void saveCutImage(String s, String w, int cx, int cy, int dx, int dy) {
-		Mat src = org.bytedeco.opencv.global.opencv_imgcodecs.imread(s, org.bytedeco.opencv.global.opencv_imgcodecs.IMREAD_COLOR);
+		Mat src = org.bytedeco.opencv.global.opencv_imgcodecs.imread(s,
+				org.bytedeco.opencv.global.opencv_imgcodecs.IMREAD_COLOR);
 		Mat mat = getImageRoiRect(src, cx, cy, dx, dy);
 		org.bytedeco.opencv.global.opencv_imgcodecs.imwrite(w, mat);
 	}
-	
+
 	public static Mat byteDecoReadImage(String s) {
-		return org.bytedeco.opencv.global.opencv_imgcodecs.imread(s,org.bytedeco.opencv.global.opencv_imgcodecs.IMREAD_COLOR);
+		return org.bytedeco.opencv.global.opencv_imgcodecs.imread(s,
+				org.bytedeco.opencv.global.opencv_imgcodecs.IMREAD_COLOR);
 	}
-	
+
 	public static void byteDecoSaveImage(Mat src, String name) {
 		org.bytedeco.opencv.global.opencv_imgcodecs.imwrite(name, src);
 	}
-	
+
 	public static int getPixelDiffCount(Mat src2, Mat src3, String tempImg, int threashold) {
 		Mat dst = new Mat();
-		if(tempImg!=null) {
-			byteDecoSaveImage(src2,tempImg.replace("{0}", "left"));
-			byteDecoSaveImage(src3,tempImg.replace("{0}", "right"));
-			
+		if (tempImg != null) {
+			byteDecoSaveImage(src2, tempImg.replace("{0}", "left"));
+			byteDecoSaveImage(src3, tempImg.replace("{0}", "right"));
+
 		}
 		opencv_core.absdiff(src2, src3, dst);
-		if(tempImg!=null)
-			byteDecoSaveImage(dst,tempImg.replace("{0}", "diff"));
+		if (tempImg != null)
+			byteDecoSaveImage(dst, tempImg.replace("{0}", "diff"));
 		Indexer indexer = dst.createIndexer();
 		int count = 0;
 		for (int x = 0; x < indexer.sizes()[0]; x++) {
-	        for (int y = 0; y < indexer.sizes()[1]; y++) {
-	        		double b = indexer.getDouble(x, y, 2) ;
-	                double g = indexer.getDouble(x, y, 1) ;
-	                double r = indexer.getDouble(x, y, 0) ;	        		
-	                if(b+g+r>threashold) {
-	                	System.out.println("Diff: "+(b+g+r));
-	                	count ++;
-	                	indexer.putDouble(new long[] {x,y,0},255);
-	                	indexer.putDouble(new long[] {x,y,1},255);
-	                	indexer.putDouble(new long[] {x,y,2},255);
-	                }
-	        }
-	    }
+			for (int y = 0; y < indexer.sizes()[1]; y++) {
+				double b = indexer.getDouble(x, y, 2);
+				double g = indexer.getDouble(x, y, 1);
+				double r = indexer.getDouble(x, y, 0);
+				if (b + g + r > threashold) {
+					System.out.println("Diff: " + (b + g + r));
+					count++;
+					indexer.putDouble(new long[] { x, y, 0 }, 255);
+					indexer.putDouble(new long[] { x, y, 1 }, 255);
+					indexer.putDouble(new long[] { x, y, 2 }, 255);
+				}
+			}
+		}
 
 		return count;
 	}
 
-	
+	public static int getPixelDiffCountGray(Mat src2, Mat src3, String tempImg, int threashold) {
+		Mat dst = new Mat();
+		if (tempImg != null) {
+			byteDecoSaveImage(src2, tempImg.replace("{0}", "countGrayleft"));
+			byteDecoSaveImage(src3, tempImg.replace("{0}", "countGrayright"));
+
+		}
+		opencv_core.absdiff(src2, src3, dst);
+		if (tempImg != null)
+			byteDecoSaveImage(dst, tempImg.replace("{0}", "diff"));
+		Indexer indexer = dst.createIndexer();
+		int count = 0;
+		for (int x = 0; x < indexer.sizes()[0]; x++) {
+			for (int y = 0; y < indexer.sizes()[1]; y++) {
+				double g = indexer.getDouble(x, y, 0);
+				if (g > threashold) {
+					System.out.println("Diff: " + (g));
+					count++;
+					indexer.putDouble(new long[] { x, y, 0 }, 255);
+				}
+			}
+		}
+		if (tempImg != null)
+			byteDecoSaveImage(dst, tempImg.replace("{0}", "diffout"));
+		return count;
+	}
 
 	public static Mat getImageRoiRect(Mat img, int x, int y, int w, int h) {
 		Rect r = new Rect(x, y, w, h);
@@ -137,8 +163,7 @@ public class OpencvUtils {
 		return image_roi;
 	}
 
-
-	public static Mat rotateImage(Mat img, org.bytedeco.opencv.opencv_core.Point2f center,double angle) {
+	public static Mat rotateImage(Mat img, org.bytedeco.opencv.opencv_core.Point2f center, double angle) {
 		Mat rotation_matrix = opencv_imgproc.getRotationMatrix2D(center, angle, 1.0);
 		Mat destinationMat = new Mat();
 		opencv_imgproc.warpAffine(img, destinationMat, rotation_matrix, img.size());
@@ -151,7 +176,7 @@ public class OpencvUtils {
 		Mat imgMat = iplConverter.convertToMat(iplConverter.convert(orig));
 		Mat cloneMat = iplConverter.convertToMat(iplConverter.convert(img));
 
-		opencv_imgproc.resize(imgMat, cloneMat, new org.bytedeco.opencv.opencv_core.Size(wnew,hnew));
+		opencv_imgproc.resize(imgMat, cloneMat, new org.bytedeco.opencv.opencv_core.Size(wnew, hnew));
 		return iplConverter.convertToIplImage(iplConverter.convert(imgMat));
 	}
 
@@ -169,7 +194,7 @@ public class OpencvUtils {
 		CvScalar cv = new CvScalar();
 		cv.red(r);
 		cv.green(g);
-		cv .blue(b);
+		cv.blue(b);
 		return cv;
 	}
 
@@ -242,8 +267,6 @@ public class OpencvUtils {
 		opencv_imgcodecs.cvSaveImage(name, img);
 	}
 
-
-
 	public String getDateString() {
 		DateFormat format = new SimpleDateFormat("MM/dd/yy HH:mm:ss");
 		String d = format.format(new Date());
@@ -260,7 +283,7 @@ public class OpencvUtils {
 	}
 
 	public static void setText(IplImage orig, String perc, CvFont font, int x, int y, CvScalar color) {
-		opencv_imgproc.cvPutText(orig, perc, cvPoint(x,y), font, color);
+		opencv_imgproc.cvPutText(orig, perc, cvPoint(x, y), font, color);
 	}
 
 	public static CvFont getFont(double fontScale, int thickness) {
@@ -316,16 +339,35 @@ public class OpencvUtils {
 	public static void convertToBinImage(IplImage diffImg, double threshold, double maxVal) {
 		opencv_imgproc.cvThreshold(diffImg, diffImg, threshold, maxVal, opencv_imgproc.CV_THRESH_BINARY);
 	}
+
 	public static void convertToBinImage2(IplImage diffImg, double threshold, double maxVal) {
-		opencv_imgproc.cvThreshold(diffImg, diffImg, threshold, maxVal, opencv_imgproc.CV_THRESH_BINARY|opencv_imgproc.CV_THRESH_OTSU);
+		opencv_imgproc.cvThreshold(diffImg, diffImg, threshold, maxVal,
+				opencv_imgproc.CV_THRESH_BINARY | opencv_imgproc.CV_THRESH_OTSU);
 	}
+
 	public static void absDiff(IplImage imglast, IplImage grayImg, IplImage diffImg) {
 		cvAbsDiff(grayImg, imglast, diffImg);
 	}
 
+	public static void convertToBinImage(Mat diffImg, double threshold, double maxVal) {
+		opencv_imgproc.threshold(diffImg, diffImg, threshold, maxVal, opencv_imgproc.CV_THRESH_BINARY);
+	}
+
+	public static void convertToBinImage2(Mat diffImg, double threshold, double maxVal) {
+		opencv_imgproc.threshold(diffImg, diffImg, threshold, maxVal,
+				opencv_imgproc.CV_THRESH_BINARY | opencv_imgproc.CV_THRESH_OTSU);
+	}
+
+	public static void absDiff(Mat imglast, Mat grayImg, Mat diffImg) {
+		opencv_core.absdiff(grayImg, imglast, diffImg);
+	}
+
 	public static void toGrayImage(IplImage img, IplImage grayImg) {
-		
-		opencv_imgproc.cvCvtColor(img, grayImg, IPL_DEPTH_8U);
+		opencv_imgproc.cvCvtColor(img, grayImg, opencv_imgproc.COLOR_BGR2GRAY);
+	}
+
+	public static void toGrayImage(Mat img, Mat grayImg) {
+		opencv_imgproc.cvtColor(img, grayImg, opencv_imgproc.COLOR_BGR2GRAY);
 	}
 
 	public static IplImage createGrayImage(IplImage img) {
@@ -337,10 +379,29 @@ public class OpencvUtils {
 		opencv_imgproc.cvSmooth(img, img, spatSigma, apWidth, apHeight, colorSigma, spatSigma);
 	}
 
+	public static void gaussSmooth(Mat img, Size ksize, int sigX, int sigY, int borderW) {
+		opencv_imgproc.GaussianBlur(img, img, ksize, sigX, sigY, borderW);
+	}
+
 	public static IplImage clone(IplImage img) {
 		IplImage orig;
 		orig = img.clone();
 		return orig;
+	}
+
+	public static void findContours(Mat in, MatVector vector) {
+		opencv_imgproc.findContours(in, vector, opencv_imgproc.CV_RETR_TREE, opencv_imgproc.CV_CHAIN_APPROX_NONE);
+		for (Mat v : vector.get()) {
+			double val = opencv_imgproc.contourArea(v);
+			RotatedRect box = new RotatedRect();
+			Point2f center = new Point2f();
+			FloatPointer radius = new FloatPointer();
+			opencv_imgproc.minEnclosingCircle(v, center, radius);
+			opencv_imgproc.boxPoints(box, v);
+			System.out.println(box.boundingRect());
+			System.out.println(val);
+			System.out.println("Circle:" + center + ": " + radius.get());
+		}
 	}
 
 	public static void saveImage(Mat src, String name) {
@@ -352,24 +413,35 @@ public class OpencvUtils {
 		return img;
 	}
 
+	public static Mat resizePerct(Mat in, int xPerct, int yPerct) {
+		Mat ret = new Mat();
+		int x = (in.rows() * xPerct) / 100;
+		int y = (in.cols() * yPerct) / 100;
+		opencv_imgproc.resize(in, ret, new Size(x, y));
+		return ret;
+	}
+
 	public static Mat resize(Mat in, int x, int y) {
 		Mat ret = new Mat();
 		opencv_imgproc.resize(in, ret, new Size(x, y));
 		return ret;
 	}
 
+	public static Mat canny(Mat in, int low, int high) {
+		Mat ret = in.clone();
+		opencv_imgproc.Canny(in, ret, low, high);
+		return ret;
+	}
 
 	public static Mat threashold(Mat in, int t1, int t2) {
 		Mat dst = new Mat();
 		opencv_imgproc.threshold(in, dst, t1, t2, Imgproc.THRESH_BINARY);
 		return dst;
 	}
-	
 
 	public static void saveImage(String dst, Mat img) {
 		org.bytedeco.opencv.global.opencv_imgcodecs.imwrite(dst, img);
 	}
-
 
 	public static void movToFrames(String file, String output) {
 		VideoCapture vc = new VideoCapture();
@@ -404,8 +476,11 @@ public class OpencvUtils {
 
 		}
 	}
+
 	public static boolean colorMatch(double[] a, Scalar testColor, Scalar colorMatchTolerance) {
-		if ((Math.abs(a[0] - testColor.get(0)) < colorMatchTolerance.get(0)) && (Math.abs(a[1] - testColor.get(1)) < colorMatchTolerance.get(1)) && (Math.abs(a[2] - testColor.get(2)) < colorMatchTolerance.get(2)))
+		if ((Math.abs(a[0] - testColor.get(0)) < colorMatchTolerance.get(0))
+				&& (Math.abs(a[1] - testColor.get(1)) < colorMatchTolerance.get(1))
+				&& (Math.abs(a[2] - testColor.get(2)) < colorMatchTolerance.get(2)))
 			return true;
 
 		return false;

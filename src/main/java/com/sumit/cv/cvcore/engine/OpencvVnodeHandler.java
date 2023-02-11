@@ -9,6 +9,7 @@ import com.sumit.cv.cvcore.models.AnonDefObj;
 import com.sumit.cv.cvcore.opencv.DefaultShapeMatcher;
 import com.sumit.cv.cvcore.opencv.OpencvUtils;
 import com.sumit.cv.cvcore.opencv.matchers.ExactPixelShapeMatcher;
+import com.sumit.cv.cvcore.opencv.matchers.SimilarityMatcher;
 
 public  class OpencvVnodeHandler extends DefaultVNodeHandler {
 
@@ -17,11 +18,15 @@ public  class OpencvVnodeHandler extends DefaultVNodeHandler {
 	Mat left, right;
 	Map<String, DefaultShapeMatcher> matchers = new HashMap<>();
 	{
+		matchers.put("similar", new SimilarityMatcher());
+
+		
 		matchers.put("match", new ExactPixelShapeMatcher());
 		matchers.put("exact", new ExactPixelShapeMatcher());
 		matchers.put("exactmatch", new ExactPixelShapeMatcher());
-		matchers.put("default", new ExactPixelShapeMatcher());
+		matchers.put("default", new ExactPixelShapeMatcher()); 
 		matchers.put("pixel", new ExactPixelShapeMatcher());
+		matchers.put("ImageMatch", new ExactPixelShapeMatcher());
 	}
 
 	@Override
